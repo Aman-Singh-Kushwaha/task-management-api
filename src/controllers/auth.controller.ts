@@ -15,7 +15,7 @@ export const register = async (req: Request, res: Response) => {
 
     const userExists = await User.findOne({ email });
     if (userExists) {
-      return res.status(400).json({ message: 'User already exists' });
+      throw new ApiError(400, 'User already exists');
     }
 
     const user = await User.create({
@@ -32,17 +32,21 @@ export const register = async (req: Request, res: Response) => {
       maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     });
 
-    res.status(201).json({
-      success: true,
-      user: {
+    res.status(201).json(
+      new ApiResponse(201, {
         id: user._id,
         name: user.name,
         email: user.email,
         role: user.role
-      }
-    });
+      }, 'User registered successfylly'
+      )
+    );
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: (error as Error).message });
+    if(error instanceof ApiError) {
+      return res.status(error.statusCode).json({ status: error.statusCode, message: error.message });
+    } else {
+      throw new ApiError(500,'Server Error',[],(error as Error)?.stack);
+    }
   }
 };
 
@@ -52,12 +56,12 @@ export const login = async (req: Request, res: Response) => {
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      throw new ApiError(401, 'Invalid User Credentials');
     }
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      throw new ApiError(401, 'Invalid Password Credentials');
     }
 
     const token = signToken(user._id, user.role);
@@ -68,17 +72,22 @@ export const login = async (req: Request, res: Response) => {
       maxAge: 30 * 24 * 60 * 60 * 1000
     });
 
-    res.json({
-      success: true,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      }
-    });
+    return res.status(200).json(
+      new ApiResponse(200, {
+        user:{
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role
+        }
+      }, "Login successfull")
+    );
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: (error as Error).message });
+    if(error instanceof ApiError) {
+      return res.status(error.statusCode).json({ status: error.statusCode, message: error.message });
+    } else {
+      throw new ApiError(500, 'Server error', [], (error as Error)?.stack);
+    }
   }
 };
 
@@ -88,8 +97,10 @@ export const logout = (req: Request, res: Response) => {
     httpOnly: true
   });
 
-  res.status(200).json({
-    success: true,
-    message: 'User logged out successfully'
-  });
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      'User logged out successfully'
+    )
+  );
 };
