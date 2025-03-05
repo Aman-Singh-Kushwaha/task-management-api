@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/User';
+import { ApiResponse, ApiError } from '../utils/server-utils';
 
 const signToken = (id: string, role: string) => {
   return jwt.sign({ id, role }, process.env.JWT_SECRET as string, {
@@ -79,4 +80,16 @@ export const login = async (req: Request, res: Response) => {
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: (error as Error).message });
   }
+};
+
+export const logout = (req: Request, res: Response) => {
+  res.cookie('token', 'none', {
+    expires: new Date(Date.now() + 10 * 1000),
+    httpOnly: true
+  });
+
+  res.status(200).json({
+    success: true,
+    message: 'User logged out successfully'
+  });
 };
