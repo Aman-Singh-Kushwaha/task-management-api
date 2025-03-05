@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import User from '../models/User';
+import User from '../models/User.model';
 import { ApiResponse, ApiError } from '../utils/server-utils';
 
 const signToken = (id: string, role: string) => {
