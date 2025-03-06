@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import User from '../models/User';
+import User from '../models/User.model';
+import Task from '../models/Task.model';
+
 import { ApiError } from '../utils/server-utils';
 
 interface JwtPayload {
@@ -11,12 +13,17 @@ interface JwtPayload {
 declare global {
   namespace Express {
     interface Request {
-      user?: any;
+      user: {
+        _id: string;
+        role: 'user' | 'admin';
+        email: string;
+        name: string;
+      };
     }
   }
 }
 
-export const JWTverify = async (
+export const verifyJWT = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -36,7 +43,12 @@ export const JWTverify = async (
     }
 
     // Adding user to request object for further application
-    req.user = user;
+    req.user = {
+      _id: user._id.toString(),
+      role: user.role as 'user' | 'admin',
+      email: user.email,
+      name: user.name
+    };
     next();
   } catch (error) {
     if (error instanceof ApiError) {
@@ -49,4 +61,41 @@ export const JWTverify = async (
       });
     }
   }
+};
+
+type AuthorizationRole = 'admin' | 'self' | 'taskOwner';
+
+export const authorize = (allowedRoles: AuthorizationRole[]) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      // Always allow admin
+      if (req.user.role === 'admin') return next();
+
+      for (const role of allowedRoles) {
+        switch (role) {
+          case 'self':
+            // Check if user is acting on their own profile
+            if (req.params.userId === req.user._id.toString()) {
+              return next();
+            }
+            break;
+
+          case 'taskOwner':
+            // Check if user owns the task
+            const task = await Task.findById(req.params.taskId);
+            if (!task) {
+              throw new ApiError(404, 'Task not found');
+            }
+            if (task.owner.toString() === req.user._id.toString()) {
+              return next();
+            }
+            break;
+        }
+      }
+
+      throw new ApiError(403, 'You do not have permission to perform this action');
+    } catch (error) {
+      next(error);
+    }
+  };
 };
