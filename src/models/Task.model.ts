@@ -2,7 +2,7 @@ import mongoose, { Document } from 'mongoose';
 
 export interface ITask extends Document {
   title:       string;
-  desctiption: string;
+  description: string;
   status:      'pending' | 'in-progress' | 'completed';
   dueDate:     Date;
   owner:       mongoose.Types.ObjectId;

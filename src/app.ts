@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import connectDB from './config/db';
 
 import authRouter from './routes/auth.routes';
+import taskRouter from './routes/task.routes';
 
 dotenv.config();
 connectDB();
@@ -20,6 +21,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // --------- Main Routes (v1) ---------
 app.use('/api/v1/auth', authRouter);
+app.use('/api/v1/tasks', taskRouter);
 
 
 // ------------------------------------
