@@ -140,11 +140,16 @@ export const getTaskById = async (req: Request, res: Response) => {
 
 export const updateTask = async (req: Request, res: Response) => {
   try {
-    const { title, description, status, dueDate } = req.body;
+    const updateFields: { [key: string]: any } = {};
+    
+    if (req.body.title !== undefined) updateFields.title = req.body.title;
+    if (req.body.description !== undefined) updateFields.description = req.body.description;
+    if (req.body.status !== undefined) updateFields.status = req.body.status;
+    if (req.body.dueDate !== undefined) updateFields.dueDate = req.body.dueDate;
 
     const task = await Task.findByIdAndUpdate(
       req.params.taskId,
-      { title, description, status, dueDate },
+      { $set: updateFields },
       { new: true, runValidators: true }
     );
 
