@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
 import Task from '../models/Task.model';
-import { ApiError } from '../utils/server-utils';
-import { ApiResponse } from '../utils/server-utils';
+import { ApiError, ApiResponse } from '../utils/server-utils';
+import { buildTaskQuery, buildSortOptions, getPaginationOptions } from '../utils/task.utils';
+import { TaskQuery, TaskListResponse } from '../types/task.types';
 
 export const createTask = async (req: Request, res: Response) => {
   try {
@@ -33,24 +34,87 @@ export const createTask = async (req: Request, res: Response) => {
   }
 };
 
-export const getAllTasks = async (req: Request, res: Response) => {
+export const getAllTasks = async (req: Request, res: Response): Promise<void> => {
   try {
-    let tasks;
-    
-    if (req.user.role === 'admin') {
-      tasks = await Task.find().populate('owner', 'name email');
-    } else {
-      tasks = await Task.find({ owner: req.user._id });
+    // Validate and sanitize query parameters
+    const validatedQuery: TaskQuery = {
+      page: req.query.page?.toString(),
+      limit: req.query.limit?.toString(),
+      sort: req.query.sort?.toString(),
+      status: req.query.status as 'pending' | 'in-progress' | 'completed',
+      search: req.query.search?.toString()
+    };
+
+    // Validate status if provided
+    if (validatedQuery.status && 
+        !['pending', 'in-progress', 'completed'].includes(validatedQuery.status)) {
+      throw new ApiError(400, 'Invalid status value');
     }
 
+    // Build query with validated parameters
+    const query = buildTaskQuery(
+      req.user._id,
+      req.user.role === 'admin',
+      validatedQuery
+    );
+
+    // Validate sort field
+    const allowedSortFields = ['createdAt', 'dueDate', 'status', 'title'];
+    const sortField = validatedQuery.sort?.split(':')[0];
+    if (sortField && !allowedSortFields.includes(sortField)) {
+      throw new ApiError(400, 'Invalid sort field');
+    }
+
+    const sort = buildSortOptions(validatedQuery.sort);
+    const { page, limit, skip } = getPaginationOptions(validatedQuery);
+
+    // Execute queries
+    const [tasks, total] = await Promise.all([
+      Task.find(query)
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .populate('owner', 'name email')
+        .lean(),
+      Task.countDocuments(query)
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    // Handle no results case
+    if (tasks.length === 0 && page > 1 && total > 0) {
+      validatedQuery.page = Math.ceil(total / limit).toString();
+      await getAllTasks(req, res);
+      return;
+    }
+
+    const responseData: TaskListResponse = {
+      tasks,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1
+      }
+    };
+
     res.status(200).json(
-      new ApiResponse(200, {
-        tasks,
-        count: tasks.length
-      }, 'Tasks fetched successfully')
+      new ApiResponse(200, responseData, 'Tasks fetched successfully')
     );
   } catch (error) {
-    throw new ApiError(500, 'Error fetching tasks');
+    if (error instanceof ApiError) {
+      res.status(error.statusCode).json({
+        status: error.statusCode,
+        message: error.message
+      });
+      return;
+    }
+    res.status(500).json({
+      status: 'error',
+      message: 'Internal server error'
+    });
   }
 };
 
