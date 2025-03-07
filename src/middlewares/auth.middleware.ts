@@ -63,7 +63,7 @@ export const verifyJWT = async (
   }
 };
 
-type AuthorizationRole = 'admin' | 'self' | 'taskOwner';
+type AuthorizationRole = 'admin' | 'self' | 'taskOwner' | 'taskAssignee';
 
 export const authorize = (allowedRoles: AuthorizationRole[]) => {
   return async (req: Request, res: Response, next: NextFunction) => {
@@ -87,6 +87,17 @@ export const authorize = (allowedRoles: AuthorizationRole[]) => {
               throw new ApiError(404, 'Task not found');
             }
             if (task.owner.toString() === req.user._id.toString()) {
+              return next();
+            }
+            break;
+
+          case 'taskAssignee':
+            // Check if user is assigned to the task
+            const assignedTask = await Task.findById(req.params.taskId);
+            if (!assignedTask) {
+              throw new ApiError(404, 'Task not found');
+            }
+            if (assignedTask.assignedTo && assignedTask.assignedTo.toString() === req.user._id.toString()) {
               return next();
             }
             break;

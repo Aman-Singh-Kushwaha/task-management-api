@@ -3,6 +3,7 @@ import Task from '../models/Task.model';
 import { ApiError, ApiResponse } from '../utils/server-utils';
 import { buildTaskQuery, buildSortOptions, getPaginationOptions } from '../utils/task.utils';
 import { TaskQuery, TaskListResponse } from '../types/task.types';
+import { createNotification } from '../services/notification.service';
 
 export const createTask = async (req: Request, res: Response) => {
   try {
@@ -75,6 +76,7 @@ export const getAllTasks = async (req: Request, res: Response): Promise<void> =>
         .skip(skip)
         .limit(limit)
         .populate('owner', 'name email')
+        .populate('assignedTo', 'name email')
         .lean(),
       Task.countDocuments(query)
     ]);
@@ -84,8 +86,7 @@ export const getAllTasks = async (req: Request, res: Response): Promise<void> =>
     // Handle no results case
     if (tasks.length === 0 && page > 1 && total > 0) {
       validatedQuery.page = Math.ceil(total / limit).toString();
-      await getAllTasks(req, res);
-      return;
+      return await getAllTasks(req, res);
     }
 
     const responseData: TaskListResponse = {
@@ -146,6 +147,7 @@ export const updateTask = async (req: Request, res: Response) => {
     if (req.body.description !== undefined) updateFields.description = req.body.description;
     if (req.body.status !== undefined) updateFields.status = req.body.status;
     if (req.body.dueDate !== undefined) updateFields.dueDate = req.body.dueDate;
+    if (req.body.assignedTo !== undefined) updateFields.assignedTo = req.body.assignedTo;
 
     const task = await Task.findByIdAndUpdate(
       req.params.taskId,
@@ -156,6 +158,13 @@ export const updateTask = async (req: Request, res: Response) => {
     if (!task) {
       throw new ApiError(404, 'Task not found');
     }
+
+    // Create notification after successful update
+    if (updateFields.assignedTo) await createNotification(
+      req.body.assignedTo,
+      'TASK_ASSIGNED',
+      task._id.toString()
+    );
 
     res.status(200).json(
       new ApiResponse(200, { task }, 'Task updated successfully')

@@ -16,13 +16,13 @@ const taskSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Task title is required'],
     trim: true,
-    maxlenght: [100, 'Task title should not exceed 100 characters']
+    maxlength: [100, 'Task title should not exceed 100 characters']
   },
   description: {
     type: String,
     required: [true, 'Task description is required'],
     trim: true,
-    maxlenght: [500, 'Task description should not exceed 500 characters']
+    maxlength: [500, 'Task description should not exceed 500 characters']
   },
   status: {
     type: String,
@@ -34,7 +34,7 @@ const taskSchema = new mongoose.Schema({
     required: [true, 'Task due date is required'],
     validate: {
       validator: function(dueDate: Date) {
-        return dueDate > new Date();
+        return dueDate >= new Date();
       },
       message: 'Duedate cannot be in past'
     },
