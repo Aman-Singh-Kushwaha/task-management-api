@@ -8,7 +8,7 @@ import { initCronJobs } from './utils/cron';
 import authRouter from './routes/auth.routes';
 import taskRouter from './routes/task.routes';
 import notificationRouter from './routes/notification.routes';
-
+import userRouter from './routes/user.routes';
 
 dotenv.config();
 connectDB();
@@ -26,6 +26,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/tasks', taskRouter);
 app.use('/api/v1/notifications', notificationRouter);
+app.use('/api/v1/users', userRouter);
 
 // ------------------------------------
 
