@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import connectDB from './config/db';
 import { initCronJobs } from './utils/cron';
+import { authLimiter, apiLimiter } from './middlewares/rateLimit.middleware';
 
 import authRouter from './routes/auth.routes';
 import taskRouter from './routes/task.routes';
@@ -21,6 +22,10 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Apply rate limiting
+app.use('/api/v1/auth/login', authLimiter);
+app.use('/api/v1/auth/register', authLimiter);
+app.use('/api/v1', apiLimiter);
 
 // --------- Main Routes (v1) ---------
 app.use('/api/v1/auth', authRouter);
