@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import User from '../models/User.model';
+import Task from '../models/Task.model';
 import { ApiError, ApiResponse } from '../utils/server-utils';
 
 export const getAllUsers = async (req: Request, res: Response) => {
@@ -64,5 +65,47 @@ export const deleteUser = async (req: Request, res: Response) => {
   } catch (error) {
     if (error instanceof ApiError) throw error;
     throw new ApiError(500, 'Error deleting user');
+  }
+};
+
+export const getTaskStats = async (req: Request, res: Response) => {
+  try {
+    const matchQuery = req.user.role === 'admin' ? {} : { owner: req.user._id };
+
+    const [stats] = await Task.aggregate([
+      { $match: matchQuery },
+      {
+        $group: {
+          _id: null,
+          totalTasks: { $sum: 1 },
+          completedTasks: {
+            $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] }
+          },
+          pendingTasks: {
+            $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] }
+          },
+          inProgressTasks: {
+            $sum: { $cond: [{ $eq: ['$status', 'in-progress'] }, 1, 0] }
+          }
+        }
+      }
+    ]);
+
+    const taskStats = {
+      totalTasks: stats?.totalTasks || 0,
+      completedTasks: stats?.completedTasks || 0,
+      pendingTasks: stats?.pendingTasks || 0,
+      inProgressTasks: stats?.inProgressTasks || 0,
+      completionRate: stats 
+        ? Number(((stats.completedTasks / stats.totalTasks) * 100).toFixed(1))
+        : 0
+    };
+
+    res.status(200).json(
+      new ApiResponse(200, { stats: taskStats }, 'Task statistics fetched successfully')
+    );
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw new ApiError(500, 'Error fetching task statistics');
   }
 };
