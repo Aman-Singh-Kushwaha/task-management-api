@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User.model';
 import { ApiResponse, ApiError } from '../utils/server-utils';
 
-const signToken = (id: string, role: string) => {
+export const signToken = (id: string, role: string) => {
   return jwt.sign({ id, role }, process.env.JWT_SECRET as string, {
     expiresIn: '7d'
   });

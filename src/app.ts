@@ -35,15 +35,18 @@ app.use('/api/v1/users', userRouter);
 
 // ------------------------------------
 
-initCronJobs();
 const PORT = process.env.PORT || 5000;
 
 app.get('/', (req, res) => {
   res.json({ message: 'Welcome to Task Management API' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+// Only start server if not in test environment
+if (process.env.NODE_ENV !== 'test') {
+  initCronJobs();
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+}
 
 export default app;
