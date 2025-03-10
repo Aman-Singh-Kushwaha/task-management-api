@@ -4,5 +4,8 @@ node_modules
 
 # typescript
 *.tsbuildinfo
+dist/
+build/
 
+.vscode/
 TODO.md
